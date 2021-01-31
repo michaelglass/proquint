@@ -1,12 +1,17 @@
-module Proquint exposing (Byte(..), HalfByte(..), Proquint(..), TwoBits(..), fromInt, fromString, toInt, toString)
+module Proquint exposing (Proquint, fromInt, fromString, toInt, toString)
 
 import Bitwise
+import Parser exposing (..)
 
 
+{-| Opaque type with a proquint inside
+-}
 type Proquint
-    = Proquint Int Byte Byte Byte Byte
+    = Proquint Byte Byte Byte Byte
 
 
+{-| Accepts any int between 0 and 0xFFFFFFFF
+-}
 fromInt : Int -> Maybe Proquint
 fromInt input =
     if input < 0 || input > 0xFFFFFFFF then
@@ -27,7 +32,7 @@ fromInt input =
                     |> SixteenBits
                     |> toBytes
         in
-        Just (Proquint input a b c d)
+        Just (Proquint a b c d)
 
 
 type SixteenBits
@@ -111,15 +116,23 @@ takeTwoBits (SixteenBits input) =
     )
 
 
+{-| returns the int value of the proquint
+-}
 toInt : Proquint -> Int
-toInt (Proquint input _ _ _ _) =
-    input
+toInt (Proquint a b c d) =
+    bytesToInt a b
+        -- bitshifting by 16 causes the sign to flip!
+        |> Bitwise.shiftLeftBy 15
+        |> (*) 2
+        |> (+) (bytesToInt c d)
 
 
+{-| parses proquint-strings to Proquints
+-}
 fromString : String -> Maybe Proquint
-fromString str =
-    Debug.todo "get not yet!"
-        Nothing
+fromString input =
+    Parser.run proquintParser input
+        |> Result.toMaybe
 
 
 type TwoBits
@@ -137,8 +150,10 @@ type Byte
     = Byte HalfByte HalfByte
 
 
+{-| returns the string value of the proquint
+-}
 toString : Proquint -> String
-toString (Proquint _ a b c d) =
+toString (Proquint a b c d) =
     twoBytesToSection a b ++ "-" ++ twoBytesToSection c d
 
 
@@ -219,3 +234,123 @@ twoBitsToVowel twoBits =
 
         Three ->
             'u'
+
+
+proquintParser : Parser Proquint
+proquintParser =
+    succeed buildProquint
+        |= chunk
+        |. symbol "-"
+        |= chunk
+        |. end
+
+
+buildProquint : ( Byte, Byte ) -> ( Byte, Byte ) -> Proquint
+buildProquint ( a, b ) ( c, d ) =
+    Proquint a b c d
+
+
+bytesToInt : Byte -> Byte -> Int
+bytesToInt a b =
+    byteToInt a
+        |> Bitwise.shiftLeftBy 8
+        |> Bitwise.or (byteToInt b)
+
+
+byteToInt : Byte -> Int
+byteToInt (Byte a b) =
+    halfByteToInt a
+        |> Bitwise.shiftLeftBy 4
+        |> Bitwise.or (halfByteToInt b)
+
+
+halfByteToInt : HalfByte -> Int
+halfByteToInt (HalfByte a b) =
+    twoBitsToInt a
+        |> Bitwise.shiftLeftBy 2
+        |> Bitwise.or (twoBitsToInt b)
+
+
+twoBitsToInt : TwoBits -> Int
+twoBitsToInt a =
+    case a of
+        Zero ->
+            0
+
+        One ->
+            1
+
+        Two ->
+            2
+
+        Three ->
+            3
+
+
+chunk : Parser ( Byte, Byte )
+chunk =
+    succeed combine
+        |= consonant
+        |= vowel
+        |= consonant
+        |= vowel
+        |= consonant
+
+
+combine : HalfByte -> TwoBits -> HalfByte -> TwoBits -> HalfByte -> ( Byte, Byte )
+combine a b1 (HalfByte b2 c1) c2 d =
+    ( Byte a (HalfByte b1 b2)
+    , Byte (HalfByte c1 c2) d
+    )
+
+
+vowel : Parser TwoBits
+vowel =
+    oneOf
+        [ succeed Zero
+            |. symbol "a"
+        , succeed One
+            |. symbol "i"
+        , succeed Two
+            |. symbol "o"
+        , succeed Three
+            |. symbol "u"
+        ]
+
+
+consonant : Parser HalfByte
+consonant =
+    oneOf
+        [ succeed (HalfByte Zero Zero)
+            |. symbol "b"
+        , succeed (HalfByte Zero One)
+            |. symbol "d"
+        , succeed (HalfByte Zero Two)
+            |. symbol "f"
+        , succeed (HalfByte Zero Three)
+            |. symbol "g"
+        , succeed (HalfByte One Zero)
+            |. symbol "h"
+        , succeed (HalfByte One One)
+            |. symbol "j"
+        , succeed (HalfByte One Two)
+            |. symbol "k"
+        , succeed (HalfByte One Three)
+            |. symbol "l"
+        , succeed (HalfByte Two Zero)
+            |. symbol "m"
+        , succeed (HalfByte Two One)
+            |. symbol "n"
+        , succeed (HalfByte Two Two)
+            |. symbol "p"
+        , succeed (HalfByte Two Three)
+            |. symbol "r"
+        , succeed (HalfByte Three Zero)
+            |. symbol "s"
+        , succeed (HalfByte Three One)
+            |. symbol "t"
+        , succeed (HalfByte Three Two)
+            |. symbol "v"
+        , succeed (HalfByte Three Three)
+            |. symbol "z"
+        ]
