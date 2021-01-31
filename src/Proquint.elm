@@ -1,4 +1,8 @@
-module Proquint exposing (Proquint, fromInt, fromString, toInt, toString)
+module Proquint exposing
+    ( fromInt, fromString
+    , toInt, toString
+    , Proquint
+    )
 
 {-| Basic usage:
 
@@ -8,14 +12,20 @@ module Proquint exposing (Proquint, fromInt, fromString, toInt, toString)
     Proquint.fromString "bonam-hohah"
         |> Maybe.map Proquint.toInt
 
-    # Create
-    @docs fromInt, fromString
 
-    # Conversion
-    @docs toInt, toString
+# Create
 
-    # Type
-    @docs Proquint
+@docs fromInt, fromString
+
+
+# Conversion
+
+@docs toInt, toString
+
+
+# Type
+
+@docs Proquint
 
 -}
 
