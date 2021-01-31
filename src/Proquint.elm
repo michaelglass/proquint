@@ -1,5 +1,24 @@
 module Proquint exposing (Proquint, fromInt, fromString, toInt, toString)
 
+{-| Basic usage:
+
+    Proquint.fromInt 1234
+        |> Maybe.map Proquint.toString
+
+    Proquint.fromString "bonam-hohah"
+        |> Maybe.map Proquint.toInt
+
+    # Create
+    @docs fromInt, fromString
+
+    # Conversion
+    @docs toInt, toString
+
+    # Type
+    @docs Proquint
+
+-}
+
 import Bitwise
 import Parser exposing (..)
 
