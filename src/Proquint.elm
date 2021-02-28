@@ -1,5 +1,5 @@
 module Proquint exposing
-    ( fromInt, fromString
+    ( fromInt, fromString, minInt, maxInt, randomGenerator
     , toInt, toString
     , Proquint
     )
@@ -15,7 +15,7 @@ module Proquint exposing
 
 # Create
 
-@docs fromInt, fromString
+@docs fromInt, fromString, minInt, maxInt, randomGenerator
 
 
 # Conversion
@@ -31,6 +31,7 @@ module Proquint exposing
 
 import Bitwise
 import Parser exposing (..)
+import Random
 
 
 {-| Opaque type with a proquint inside
@@ -39,29 +40,38 @@ type Proquint
     = Proquint Byte Byte Byte Byte
 
 
+type IntWithinRange
+    = IntWithinRange Int
+
+
 {-| Accepts any int between 0 and 0xFFFFFFFF
 -}
 fromInt : Int -> Maybe Proquint
 fromInt input =
-    if input < 0 || input > 0xFFFFFFFF then
+    if input < minInt || input > maxInt then
         Nothing
 
     else
-        let
-            ( a, b ) =
-                input
-                    |> Bitwise.and 0xFFFF0000
-                    |> Bitwise.shiftRightZfBy 16
-                    |> SixteenBits
-                    |> toBytes
+        Just <| fromIntWithinRange (IntWithinRange input)
 
-            ( c, d ) =
-                input
-                    |> Bitwise.and 0xFFFF
-                    |> SixteenBits
-                    |> toBytes
-        in
-        Just (Proquint a b c d)
+
+fromIntWithinRange : IntWithinRange -> Proquint
+fromIntWithinRange (IntWithinRange input) =
+    let
+        ( a, b ) =
+            input
+                |> Bitwise.and 0xFFFF0000
+                |> Bitwise.shiftRightZfBy 16
+                |> SixteenBits
+                |> toBytes
+
+        ( c, d ) =
+            input
+                |> Bitwise.and 0xFFFF
+                |> SixteenBits
+                |> toBytes
+    in
+    Proquint a b c d
 
 
 type SixteenBits
@@ -383,3 +393,25 @@ consonant =
         , succeed (HalfByte Three Three)
             |. symbol "z"
         ]
+
+
+{-| minimum valid int-value of a proquint
+-}
+minInt : Int
+minInt =
+    0
+
+
+{-| maximum valid int-value of a proquint
+-}
+maxInt : Int
+maxInt =
+    0xFFFFFFFF
+
+
+{-| random generator for proquints
+-}
+randomGenerator : Random.Generator Proquint
+randomGenerator =
+    Random.int minInt maxInt
+        |> Random.map (IntWithinRange >> fromIntWithinRange)
